@@ -8,7 +8,7 @@ package layers
 
 import (
 	"encoding/binary"
-	"errors"
+	"fmt"
 
 	"github.com/gopacket/gopacket"
 )
@@ -200,7 +200,11 @@ func (t *TLSHandshakeRecord) decodeFromBytes(h TLSRecordHeader, data []byte, df 
 	case TLSHandshakeClientKeyExchange:
 		t.ClientKeyChange.decodeFromBytes(data, df)
 	default:
-		return errors.New("Unknown TLS handshake type")
+		handshakeTypeName := "unknown"
+		if name, ok := handShakeTypeMap[handshakeType]; ok {
+			handshakeTypeName = name
+		}
+		return fmt.Errorf("Unknown TLS handshake type: 0x%02x (%s) (version=%s, length=%d, data_len=%d)", handshakeType, handshakeTypeName, h.Version.String(), h.Length, len(data))
 		// TODO
 	}
 

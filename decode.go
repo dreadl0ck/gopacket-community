@@ -7,7 +7,7 @@
 package gopacket
 
 import (
-	"errors"
+	"fmt"
 )
 
 // DecodeFeedback is used by DecodingLayer layers to provide decoding metadata.
@@ -154,5 +154,5 @@ func (d *DecodeFailure) LayerType() LayerType { return LayerTypeDecodeFailure }
 // decodeUnknown "decodes" unsupported data types by returning an error.
 // This decoder will thus always return a DecodeFailure layer.
 func decodeUnknown(data []byte, p PacketBuilder) error {
-	return errors.New("Layer type not currently supported")
+	return fmt.Errorf("layer type not currently supported (data length: %d bytes)", len(data))
 }

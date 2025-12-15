@@ -318,7 +318,7 @@ func (d *DNS) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 
 	if len(data) < 12 {
 		df.SetTruncated()
-		return errDNSPacketTooShort
+		return fmt.Errorf("DNS packet too short: got %d bytes, need at least 12 bytes for DNS header", len(data))
 	}
 
 	// since there are no further layers, the baselayer's content is
@@ -577,14 +577,14 @@ loop:
 			   zero length octet for the null label of the root.  Note
 			   that this field may be an odd number of octets; no
 			   padding is used.
-			*/
-			index2 := index + int(data[index]) + 1
-			if index2-offset > 255 {
-				return nil, 0, errDNSNameTooLong
-			} else if index2 < index+1 || index2 > len(data) {
-				return nil, 0, errDNSNameInvalidIndex
-			}
-			*buffer = append(*buffer, '.')
+		*/
+		index2 := index + int(data[index]) + 1
+		if index2-offset > 255 {
+			return nil, 0, errDNSNameTooLong
+		} else if index2 < index+1 || index2 > len(data) {
+			return nil, 0, fmt.Errorf("dns name uncomputable: invalid index (label_length=%d, index=%d, index2=%d, data_length=%d)", data[index], index, index2, len(data))
+		}
+		*buffer = append(*buffer, '.')
 			*buffer = append(*buffer, data[index+1:index2]...)
 			index = index2
 
@@ -602,19 +602,19 @@ loop:
 			   zero offset specifies the first byte of the ID field,
 			   etc.
 
-			   The compression scheme allows a domain name in a message to be
-			   represented as either:
-			      - a sequence of labels ending in a zero octet
-			      - a pointer
-			      - a sequence of labels ending with a pointer
-			*/
-			if index+2 > len(data) {
-				return nil, 0, errDNSPointerOffsetTooHigh
-			}
-			offsetp := int(binary.BigEndian.Uint16(data[index:index+2]) & 0x3fff)
-			if offsetp > len(data) {
-				return nil, 0, errDNSPointerOffsetTooHigh
-			}
+		   The compression scheme allows a domain name in a message to be
+		   represented as either:
+		      - a sequence of labels ending in a zero octet
+		      - a pointer
+		      - a sequence of labels ending with a pointer
+		*/
+		if index+2 > len(data) {
+			return nil, 0, fmt.Errorf("dns offset pointer too high: need 2 bytes at index %d, but data length is %d", index, len(data))
+		}
+		offsetp := int(binary.BigEndian.Uint16(data[index:index+2]) & 0x3fff)
+		if offsetp > len(data) {
+			return nil, 0, fmt.Errorf("dns offset pointer too high: pointer value is %d, but data length is %d (index=%d)", offsetp, len(data), index)
+		}
 			// This looks a little tricky, but actually isn't.  Because of how
 			// decodeName is written, calling it appends the decoded name to the
 			// current buffer.  We already have the start of the buffer, then, so

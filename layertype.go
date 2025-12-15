@@ -92,7 +92,12 @@ func (t LayerType) Decode(data []byte, c PacketBuilder) error {
 		d = ltMetaMap[t].Decoder
 	}
 	if d != nil {
-		return d.Decode(data, c)
+		err := d.Decode(data, c)
+		if err != nil {
+			// Wrap the error with layer type information for better debugging
+			return fmt.Errorf("decoding layer %v (%s): %w", t, t.String(), err)
+		}
+		return nil
 	}
 	return fmt.Errorf("Layer type %v has no associated decoder", t)
 }

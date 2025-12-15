@@ -8,7 +8,7 @@ package layers
 
 import (
 	"encoding/binary"
-	"errors"
+	"fmt"
 
 	"github.com/gopacket/gopacket"
 )
@@ -130,7 +130,7 @@ func (t *TLS) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 func (t *TLS) decodeTLSRecords(data []byte, df gopacket.DecodeFeedback) error {
 	if len(data) < 5 {
 		df.SetTruncated()
-		return errors.New("TLS record too short")
+		return fmt.Errorf("TLS record too short: got %d bytes, need at least 5 bytes for TLS record header", len(data))
 	}
 
 	// since there are no further layers, the baselayer's content is
@@ -144,19 +144,19 @@ func (t *TLS) decodeTLSRecords(data []byte, df gopacket.DecodeFeedback) error {
 	h.Length = binary.BigEndian.Uint16(data[3:5])
 
 	if h.ContentType.String() == "Unknown" {
-		return errors.New("Unknown TLS record type")
+		return fmt.Errorf("Unknown TLS record type: 0x%02x (version=%s, length=%d)", uint8(h.ContentType), h.Version.String(), h.Length)
 	}
 
 	hl := 5 // header length
 	tl := hl + int(h.Length)
 	if len(data) < tl {
 		df.SetTruncated()
-		return errors.New("TLS packet length mismatch")
+		return fmt.Errorf("TLS packet length mismatch: header declares %d bytes, but only %d bytes available (need %d total)", h.Length, len(data)-hl, tl)
 	}
 
 	switch h.ContentType {
 	default:
-		return errors.New("Unknown TLS record type")
+		return fmt.Errorf("Unknown TLS record type: 0x%02x (version=%s, length=%d)", uint8(h.ContentType), h.Version.String(), h.Length)
 	case TLSChangeCipherSpec:
 		var r TLSChangeCipherSpecRecord
 		e := r.decodeFromBytes(h, data[hl:tl], df)
